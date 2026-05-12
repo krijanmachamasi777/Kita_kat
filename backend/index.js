@@ -111,35 +111,35 @@ async function getPortfolio() {
   }
 }
 
-// ── TRANSACTIONS ──────────────────────────────────────────────────────
-async function getTransactionHistory(page = 1, size = 10) {
-  try {
-    const res  = await axios.post(`${VIEW_URL}/myTransaction/`, {
-      boid:      [BOID],
-      clientCode: String(client_code),
-      fromDate:  "", // format "YYYY-MM-DD"
-      page:1,
-      requestTypeScript:true,
-      scrip:      "",
-      sortAsc:    false,
-    }, { headers: headers() });
+// // ── TRANSACTIONS ──────────────────────────────────────────────────────
+// async function getTransactionHistory(page = 1, size = 10) {
+//   try {
+//     const res  = await axios.post(`${VIEW_URL}/myTransaction/`, {
+//       boid:      [BOID],
+//       clientCode: String(client_code),
+//       fromDate:  "", // format "YYYY-MM-DD"
+//       page:1,
+//       requestTypeScript:true,
+//       scrip:      "",
+//       sortAsc:    false,
+//     }, { headers: headers() });
 
-    const data  = res.data;
-    const txns  = data.object || data.myTransaction || data.data || data;
-    const total = data.totalCount || data.totalItems || "?";
+//     const data  = res.data;
+//     const txns  = data.object || data.myTransaction || data.data || data;
+//     const total = data.totalCount || data.totalItems || "?";
 
-    console.log(`\n🔁 Transactions (${Array.isArray(txns) ? txns.length : 0} of ${total}):`);
-    if (!Array.isArray(txns) || txns.length === 0) { console.log("  None."); return []; }
-    txns.forEach((tx, i) => {
-      const scrip = tx.script || tx.scrip;
-      const sign  = tx.transactionType === "purchase" ? "+" : "-";
-      console.log(`  [${i+1}] ${tx.transactionDate}  ${scrip?.padEnd(14)} ${sign}${tx.quantity} @ NPR ${tx.rate}`);
-    });
-    return txns;
-  } catch (err) {
-    console.error("❌ Transactions failed:", err.response?.data || err.message);
-  }
-}
+//     console.log(`\n🔁 Transactions (${Array.isArray(txns) ? txns.length : 0} of ${total}):`);
+//     if (!Array.isArray(txns) || txns.length === 0) { console.log("  None."); return []; }
+//     txns.forEach((tx, i) => {
+//       const scrip = tx.script || tx.scrip;
+//       const sign  = tx.transactionType === "purchase" ? "+" : "-";
+//       console.log(`  [${i+1}] ${tx.transactionDate}  ${scrip?.padEnd(14)} ${sign}${tx.quantity} @ NPR ${tx.rate}`);
+//     });
+//     return txns;
+//   } catch (err) {
+//     console.error("❌ Transactions failed:", err.response?.data || err.message);
+//   }
+// }
 
 // ── IPO APPLICATIONS ──────────────────────────────────────────────────
 
@@ -178,6 +178,35 @@ async function getApplicableIssues(page = 1, size = 10) {
     console.error("❌ Applicable issues failed:", err.response?.data || err.message);
   }
 }
+async function getWACC() {
+  try {
+    const res  = await axios.post(
+      "https://webbackend.cdsc.com.np/api/myPurchase/search/wacc/",
+      { demat: BOID,
+        scrip: "PCIL",
+       },
+      {  headers: headers()  }
+    );
+ 
+    const data    = res.data;
+    const records = data.waccUpdateResponse || [];
+ 
+    console.log(`
+💰 Purchase / WACC Data (${records.length} records):`);
+    if (records.length === 0) { console.log("  None."); return []; }
+ 
+    records.forEach((r, i) => {
+      const date = r.transactionDate ? r.transactionDate.split("T")[0] : "N/A";
+      console.log(`  [${i+1}] ${r.scrip?.padEnd(10)} | Qty: ${r.transactionQuantity} | Rate: NPR ${r.rate} | Date: ${date}`);
+      console.log(`        Source: ${r.purchaseSource} | ISIN: ${r.isin}`);
+    });
+ 
+    return records;
+  } catch (err) {
+    console.error("❌ WACC failed:", err.response?.data || err.message);
+  }
+}
+ 
  
 // ── MAIN ──────────────────────────────────────────────────────────────
 async function main() {
@@ -190,9 +219,8 @@ async function main() {
     await getMyShares();
     await getPortfolio();
     // await getTransactionHistory(1, 10);
-    // await getIPOApplications();
-    // await getMessages();
     await getApplicableIssues();
+    await getWACC();
   } catch (err) {
     console.error("Fatal:", err.message);
   }
