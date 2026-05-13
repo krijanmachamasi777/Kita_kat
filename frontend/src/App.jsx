@@ -135,7 +135,7 @@ export default function App() {
       </main>
 
       {/* ── FAB (hidden on Dashboard) ── */}
-      {tab !== "dashboard" && (
+      {tab !== "dashboard" && tab !== "losing" && (
         <button className="fab" onClick={handleFAB}>
           <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
           {tab === "journal" || tab === "losing"
