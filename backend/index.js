@@ -49,6 +49,7 @@ async function getOwnDetails() {
   console.log("  Demat Expiry :", d.dematExpiryDate);
   return d;
 }
+let script=[];
 
 // ── MY SHARES ─────────────────────────────────────────────────────────
 async function getMyShares() {
@@ -66,11 +67,11 @@ async function getMyShares() {
 const shares = Array.isArray(res.data)
   ? res.data                              // empty response []
   : (res.data?.meroShareDematShare || []); // full response with data   
-   console.log(res.data);
     console.log(`\n📊 My Shares (${res.data.totalItems} total):`);
     if (!shares || shares.length === 0) { console.log("  None."); return []; }
     shares.forEach((s, i) => {
-      console.log(`  [${i+1}] ${s.script?.padEnd(16)} | ${s.scriptDesc}`);
+      console.log(`  [${i+1}] ${s.script?.padEnd(5)} | ${s.scriptDesc}`);
+      script.push(s.script);
       console.log(`        Balance: ${s.currentBalance} | Free: ${s.freeBalance} | Freeze: ${s.freezeBalance} | Pledge: ${s.pledgeBalance}`);
     });
     return shares;
@@ -180,30 +181,45 @@ async function getApplicableIssues(page = 1, size = 10) {
 }
 async function getWACC() {
   try {
-    const res  = await axios.post(
-      "https://webbackend.cdsc.com.np/api/myPurchase/search/wacc/",
-      { demat: BOID,
-        scrip: "PCIL",
-       },
-      {  headers: headers()  }
-    );
- 
-    const data    = res.data;
-    const records = data.waccUpdateResponse || [];
- 
-    console.log(`
-💰 Purchase / WACC Data (${records.length} records):`);
-    if (records.length === 0) { console.log("  None."); return []; }
- 
-    records.forEach((r, i) => {
-      const date = r.transactionDate ? r.transactionDate.split("T")[0] : "N/A";
-      console.log(`  [${i+1}] ${r.scrip?.padEnd(10)} | Qty: ${r.transactionQuantity} | Rate: NPR ${r.rate} | Date: ${date}`);
-      console.log(`        Source: ${r.purchaseSource} | ISIN: ${r.isin}`);
-    });
- 
-    return records;
+    let allRecords = [];
+
+    for (const s of script) {
+      const res = await axios.post(
+        "https://webbackend.cdsc.com.np/api/myPurchase/search/wacc/",
+        {
+          demat: BOID,
+          scrip: s,
+        },
+        {
+          headers: headers(),
+        }
+      );
+
+      const data = res.data;
+      const records = data.waccUpdateResponse || [];
+
+      console.log(`💰 WACC Data for ${s} (${records.length} records)`);
+
+      records.forEach((r, i) => {
+        const date = r.transactionDate
+          ? r.transactionDate.split("T")[0]
+          : "N/A";
+
+        console.log(
+          `  [${i + 1}] ${r.scrip?.padEnd(10)} | Qty: ${r.transactionQuantity} | Rate: NPR ${r.rate} | Date: ${date}`
+        );
+        console.log(
+          `        Source: ${r.purchaseSource} | ISIN: ${r.isin}`
+        );
+      });
+
+      allRecords.push(...records);
+    }
+
+    return allRecords;
   } catch (err) {
     console.error("❌ WACC failed:", err.response?.data || err.message);
+    return [];
   }
 }
  
